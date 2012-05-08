@@ -11,6 +11,8 @@ class CreateRecords
   bool initTokensAndDocuments();
   bool indexAndCreateII();
   void printDetails();
+  void processANDQueryString(std::string& q);
+  bool helper_sort(Document* first,Document* second);
  private:
   Toker* toker;
   std::string stopWordFile;

@@ -1,5 +1,6 @@
 #include "Records.h"
 #include <boost/foreach.hpp>
+#include <boost/bind.hpp>
 
 CreateRecords::CreateRecords(std::vector<std::string>& fileList,std::string& stopFile)
   :files(fileList),
@@ -69,17 +70,50 @@ CreateRecords::indexAndCreateII()
   } 
 }
 
+bool 
+CreateRecords::helper_sort(Document* first,Document* second)
+{
+  if (first->getDocID()<second->getDocID())
+    return true;
+  else
+    return false;
+}
+
+void
+CreateRecords::processANDQueryString(std::string& q)
+{
+  std::string suffix=q.substr(q.find("and")+4);
+  std::string prefix=q.substr(0,q.find("and")-1);
+  
+  DocList& list1 =iIndex[prefix];
+  DocList& list2 =iIndex[suffix];
+  list1.sort(boost::bind(&CreateRecords::helper_sort,this,_1,_2));
+  list2.sort(boost::bind(&CreateRecords::helper_sort,this,_1,_2));
+  std::cout<<prefix<<" ";
+  for(DocList::iterator dit=list1.begin();dit!=list1.end();++dit)
+  {
+      std::cout<<" -> "<<(*dit)->getDocName();
+  }
+  std::cout<<"\n";
+  std::cout<<suffix<<" ";
+  for(DocList::iterator dit=list2.begin();dit!=list2.end();++dit)
+  {
+      std::cout<<" -> "<<(*dit)->getDocName();
+  }
+  std::cout<<"\n";
+}
+
 
 void
 CreateRecords::printDetails()
 {
   for(InvertedIndex::iterator it=iIndex.begin();it!=iIndex.end();++it)
   {
-    std::cout<<"Term: "<<(*it).first;
-    std::cout<<" in docs: ";
+    std::cout<<(*it).first;
+    std::cout<<" ";
     for(DocList::iterator dit=(*it).second.begin();dit!=(*it).second.end();++dit)
     {
-      std::cout<<(*dit)->getDocName()<<" ";
+      std::cout<<" -> "<<(*dit)->getDocID();
     }
     std::cout<<"\n";
   }
@@ -99,5 +133,10 @@ int main(int argc,char *argv[])
   CreateRecords cr(files,sw);
   cr.initTokensAndDocuments();
   cr.indexAndCreateII();
-  cr.printDetails();
+  
+  //query - simple do only ANDs
+  std::string query;
+  std::cout<<"Enter query string: ";
+  std::getline(std::cin,query);
+  cr.processANDQueryString(query);
 }
