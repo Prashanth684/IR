@@ -80,43 +80,90 @@ CreateRecords::helper_sort(Document* first,Document* second)
 }
 
 void
-CreateRecords::processANDQueryString(std::string& q)
+CreateRecords::processSingleQueryString(std::string& q,DocList& result)
 {
-  std::string suffix=q.substr(q.find("and")+4);
-  std::string prefix=q.substr(0,q.find("and")-1);
-  
+  std::size_t pos;
+  std::string suffix;
+  std::string prefix;
+  bool isAndQuery=true;
+
+  if((pos=q.find("and"))!=std::string::npos)
+  {
+   suffix=q.substr(pos+4);
+   prefix=q.substr(0,pos-1);
+  }
+  else if((pos=q.find("or"))!=std::string::npos)
+  {
+   suffix=q.substr(pos+3);
+   prefix=q.substr(0,pos-1);
+   isAndQuery=false;
+  }
+
   DocList& list1 =iIndex[prefix];
   DocList& list2 =iIndex[suffix];
   list1.sort(boost::bind(&CreateRecords::helper_sort,this,_1,_2));
   list2.sort(boost::bind(&CreateRecords::helper_sort,this,_1,_2));
-  std::cout<<prefix<<" ";
-  for(DocList::iterator dit=list1.begin();dit!=list1.end();++dit)
+  
+  std::cout<<prefix;
+  printDocList(list1);
+  std::cout<<suffix;
+  printDocList(list2);
+  
+  if(isAndQuery)
+   processANDQueryString(list1,list2,result);
+  else
+   processORQueryString(list1,list2,result); 
+  
+  std::cout<<"result ";
+  printDocList(result);
+}
+
+void
+CreateRecords::processANDQueryString(DocList& list1,DocList& list2,DocList& result)
+{
+  if (list1.empty()||list2.empty())
   {
-      std::cout<<" -> "<<(*dit)->getDocName();
+    return;
   }
-  std::cout<<"\n";
-  std::cout<<suffix<<" ";
-  for(DocList::iterator dit=list2.begin();dit!=list2.end();++dit)
+  DocList::iterator resIter=result.begin();
+  DocList::iterator itList1,itList2;
+  for(itList1=list1.begin(),itList2=list2.begin();itList1!=list1.end() && itList2!=list2.end();)
   {
-      std::cout<<" -> "<<(*dit)->getDocName();
+    if ((*itList1)->getDocID()==(*itList2)->getDocID())
+    {
+     resIter=result.insert_after(resIter,(*itList1));
+     ++itList1;++itList2;
+     continue;
+    }
+    (*itList1)->getDocID()<(*itList2)->getDocID()?++itList1:++itList2;
   }
-  std::cout<<"\n";
+}
+
+void
+CreateRecords::processORQueryString(DocList& list1,DocList& list2,DocList& result)
+{
+  if (list1.empty()||list2.empty())
+  {
+    list1.empty()?result=list2:result=list1;
+    return;
+  }
+  result=list1;
+  result.merge(list2);
+  result.unique();
 }
 
 
 void
-CreateRecords::printDetails()
+CreateRecords::printDocList(DocList& d)
 {
-  for(InvertedIndex::iterator it=iIndex.begin();it!=iIndex.end();++it)
+  if(!d.empty())
   {
-    std::cout<<(*it).first;
-    std::cout<<" ";
-    for(DocList::iterator dit=(*it).second.begin();dit!=(*it).second.end();++dit)
+    for(DocList::iterator dit=d.begin();dit!=d.end();++dit)
     {
       std::cout<<" -> "<<(*dit)->getDocID();
     }
-    std::cout<<"\n";
   }
+    std::cout<<"\n";
 }
 
 int main(int argc,char *argv[])
@@ -138,5 +185,6 @@ int main(int argc,char *argv[])
   std::string query;
   std::cout<<"Enter query string: ";
   std::getline(std::cin,query);
-  cr.processANDQueryString(query);
+  DocList result;
+  cr.processSingleQueryString(query,result);
 }

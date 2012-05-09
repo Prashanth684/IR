@@ -10,10 +10,12 @@ class CreateRecords
   ~CreateRecords();
   bool initTokensAndDocuments();
   bool indexAndCreateII();
-  void printDetails();
-  void processANDQueryString(std::string& q);
+  void printDocList(DocList& d);
+  void processSingleQueryString(std::string& q,DocList& result);
   bool helper_sort(Document* first,Document* second);
  private:
+  void processANDQueryString(DocList& list1,DocList& list2,DocList& result);
+  void processORQueryString(DocList& list1,DocList& list2,DocList& result);
   Toker* toker;
   std::string stopWordFile;
   std::vector<std::string> files;
