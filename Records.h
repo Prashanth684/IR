@@ -10,7 +10,8 @@ class CreateRecords
   ~CreateRecords();
   bool initTokensAndDocuments();
   bool indexAndCreateII();
-  void printDocList(DocList& d);
+  void printDocList(DocList& d,std::string& term);
+  void parseSingleInputQString(std::string& q,std::string& prefix,std::string& suffix,bool& ANDQuery);
   void processSingleQueryString(std::string& q,DocList& result);
   bool helper_sort(Document* first,Document* second);
  private:

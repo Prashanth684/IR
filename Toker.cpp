@@ -52,7 +52,7 @@ Toker::initializeStopWords()
 }
 
 bool
-Toker::tokenize(std::string& filename,LinkedList& tokens)
+Toker::tokenize(std::string& filename,LinkedList& tokens,AttrMap& atMap)
 {
   std::ifstream f(filename.c_str());
   std::string tokenstring;
@@ -69,21 +69,30 @@ Toker::tokenize(std::string& filename,LinkedList& tokens)
   }
 
   Tokenizer tok(tokenstring);
-  removeStops(tok,tokens);
+  removeStops(tok,tokens,atMap);
   return true;
 }
 
 bool
-Toker::removeStops(Tokenizer& tok,LinkedList& tokens)
+Toker::removeStops(Tokenizer& tok,LinkedList& tokens,AttrMap& atMap)
 {
   LinkedList::const_iterator it =tokens.begin();
   for(Tokenizer::iterator iter=tok.begin();iter!=tok.end();++iter)
   {
     std::string temp(*iter);
     boost::algorithm::to_lower(temp);
-    if ((std::find(stops.begin(),stops.end(),temp)==stops.end())&&(std::find(tokens.begin(),tokens.end(),temp)==tokens.end()))
+    if(std::find(stops.begin(),stops.end(),temp)==stops.end())
     {
-      tokens.insert_after(it,temp);
+      if(std::find(tokens.begin(),tokens.end(),temp)!=tokens.end())
+      {
+	TermAttributes* ta=atMap[temp];
+	ta->increaseCount();
+      }
+      else
+      {
+	tokens.insert_after(it,temp);
+	atMap[temp]=new TermAttributes();
+      }
     }
   }
 }

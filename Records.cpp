@@ -1,6 +1,8 @@
 #include "Records.h"
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 CreateRecords::CreateRecords(std::vector<std::string>& fileList,std::string& stopFile)
   :files(fileList),
@@ -79,25 +81,39 @@ CreateRecords::helper_sort(Document* first,Document* second)
     return false;
 }
 
+void 
+CreateRecords::parseSingleInputQString(std::string& q,std::string& prefix,std::string& suffix,bool& ANDQuery)
+{
+  //support two delims -and & or
+  Tokenizer tok(q);
+  bool delimreached=false;
+  for(Tokenizer::iterator it=tok.begin();it!=tok.end();++it)
+  {
+    if(!delimreached)
+    {
+      if((ANDQuery=((*it)=="and"))||((*it)=="or"))
+     {
+      delimreached=true;
+      continue;
+     }
+     prefix+=(*it);
+    }
+    else
+    {
+      suffix+=(*it);
+    }
+  }
+}
+
 void
 CreateRecords::processSingleQueryString(std::string& q,DocList& result)
 {
   std::size_t pos;
   std::string suffix;
   std::string prefix;
-  bool isAndQuery=true;
+  bool isAndQuery=false;
 
-  if((pos=q.find("and"))!=std::string::npos)
-  {
-   suffix=q.substr(pos+4);
-   prefix=q.substr(0,pos-1);
-  }
-  else if((pos=q.find("or"))!=std::string::npos)
-  {
-   suffix=q.substr(pos+3);
-   prefix=q.substr(0,pos-1);
-   isAndQuery=false;
-  }
+  parseSingleInputQString(q,prefix,suffix,isAndQuery);
 
   DocList& list1 =iIndex[prefix];
   DocList& list2 =iIndex[suffix];
@@ -105,9 +121,9 @@ CreateRecords::processSingleQueryString(std::string& q,DocList& result)
   list2.sort(boost::bind(&CreateRecords::helper_sort,this,_1,_2));
   
   std::cout<<prefix;
-  printDocList(list1);
+  printDocList(list1,prefix);
   std::cout<<suffix;
-  printDocList(list2);
+  printDocList(list2,suffix);
   
   if(isAndQuery)
    processANDQueryString(list1,list2,result);
@@ -115,7 +131,8 @@ CreateRecords::processSingleQueryString(std::string& q,DocList& result)
    processORQueryString(list1,list2,result); 
   
   std::cout<<"result ";
-  printDocList(result);
+  std::string res=prefix+";"+suffix;
+  printDocList(result,res);
 }
 
 void
@@ -154,13 +171,17 @@ CreateRecords::processORQueryString(DocList& list1,DocList& list2,DocList& resul
 
 
 void
-CreateRecords::printDocList(DocList& d)
+CreateRecords::printDocList(DocList& d,std::string& term)
 {
   if(!d.empty())
   {
     for(DocList::iterator dit=d.begin();dit!=d.end();++dit)
     {
       std::cout<<" -> "<<(*dit)->getDocID();
+      std::vector<std::string> splitVec;
+      boost::split(splitVec,term,boost::is_any_of(";"));
+      for(std::vector<std::string>::iterator it=splitVec.begin();it!=splitVec.end();it++)
+	std::cout<<" (cnt for "<<*it<<": "<<(*dit)->getTermCountAttribute(*it)<<")";
     }
   }
     std::cout<<"\n";
@@ -181,7 +202,7 @@ int main(int argc,char *argv[])
   cr.initTokensAndDocuments();
   cr.indexAndCreateII();
   
-  //query - simple do only ANDs
+  //query - AND/OR single query proc
   std::string query;
   std::cout<<"Enter query string: ";
   std::getline(std::cin,query);

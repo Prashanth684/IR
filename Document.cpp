@@ -43,7 +43,17 @@ Document::getDocName()
 bool
 Document::processDocument()
 {
-  return (toker->tokenize(file,tokens));
+  return (toker->tokenize(file,tokens,attributeMap));
+}
+
+int
+Document::getTermCountAttribute(std::string& term)
+{
+  TermAttributes* ta=attributeMap[term];
+  if(ta)
+    return(ta->getCount());
+  else
+    return 0;
 }
 
 void

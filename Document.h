@@ -12,6 +12,7 @@ class Document
   LinkedList& getTokenList();
   unsigned int& getDocID();
   std::string& getDocName();
+  int getTermCountAttribute(std::string& term);
   bool isDocValid();
   void printDetails();
  private:
@@ -20,6 +21,7 @@ class Document
   std::string docName;
   std::string file;
   LinkedList tokens;
+  AttrMap attributeMap;
 };
 
 #endif
